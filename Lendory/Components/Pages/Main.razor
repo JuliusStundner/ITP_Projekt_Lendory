@@ -1,0 +1,112 @@
+﻿@page "/main"
+@using Lendory.Data
+@using Lendory.Entities
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext _context
+
+<div class="page-container">
+
+    <!-- Header -->
+    <header class="header">
+        <h2>Aktuell Ausgeliehen</h2>
+
+        <div class="header-actions">
+            <button>
+                <NavLink href="/category" class="nav-link">
+                    Kategorien
+                </NavLink>
+            </button>
+            <button>Prop anfordern</button>
+        </div>
+    </header>
+
+    @if (_items == null)
+    {
+    <p>Lade Items...</p>
+    }
+    else
+    {
+    <div class="item-grid">
+        @foreach (var item in _items)
+        {
+        <div class="item-card">@item.Name</div>
+        }
+    </div>
+    }
+
+    <!-- Need Help -->
+    <section class="section">
+        <h3>Hilfe benötigt?</h3>
+
+        <div class="help-grid">
+            <div class="help-card">Wie fordere ich ein Prop an?</div>
+            <div class="help-card">Wie erfolgt ein Verleih Prozess?</div>
+            <div class="help-card">Wie erfolgt der Zahlungprozess?</div>
+        </div>
+    </section>
+
+    <!-- Scan Section -->
+    <section class="scan-section">
+        <h3>Bist du im Lager?</h3>
+        <p>Scanne den NFC-Tag oder den QR-Code, um dein Prop zu finden.</p>
+        <button>Scan!</button>
+    </section>
+
+</div>
+
+<style>
+    .page-container {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+        padding: 1.5rem;
+    }
+
+    .header {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .section {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .item-grid, .help-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 1rem;
+    }
+
+    .item-card, .help-card {
+        border: 1px solid #ccc;
+        padding: 1rem;
+    }
+
+    .scan-section {
+        border: 1px solid #ccc;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+</style>
+
+@code {
+    private List<Item>? _items;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _items = await _context.Items
+            .OrderBy(i => i.Name)
+            .ToListAsync();
+    }
+}

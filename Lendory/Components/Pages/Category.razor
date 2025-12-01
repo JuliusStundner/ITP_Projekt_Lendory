@@ -1,0 +1,38 @@
+﻿@page "/category"
+@using Lendory.Data
+@using Lendory.Entities
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext _context
+@inject AuthenticationStateProvider AuthStateProvider
+@using Microsoft.AspNetCore.Components.Authorization
+
+<h3>Kategorien</h3>
+
+@if (_categories == null)
+{
+    <MudProgressCircular Color="Color.Primary" />
+    return;
+}
+
+<div class="item-grid">
+    @foreach (var category in _categories)
+    {
+        <div class="item-card">@category.Name</div>
+    }
+</div>
+
+@code {
+    private List<ItemCategory>? _categories;
+    private bool _isAdmin;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        _isAdmin = user.IsInRole("Admin");
+
+        _categories = await _context.Categories
+            .OrderBy(c => c.CategoryId)
+            .ToListAsync();
+    }
+}

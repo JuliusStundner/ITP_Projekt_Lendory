@@ -1,0 +1,77 @@
+﻿@page "/createItem"
+@using Lendory.Data
+@using Lendory.Entities
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext _context
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+@using Microsoft.AspNetCore.Components.Authorization
+
+@if (!_isAdmin)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Filled">Dieser Bereich ist nur für Admins!</MudAlert>
+}
+else
+{
+    <MudPaper Class="pa-6 mx-auto mt-6" Style="max-width:600px;">
+        <MudText Typo="Typo.h5" Class="mb-4">Neues Item erstellen</MudText>
+
+        <EditForm Model="@item" OnValidSubmit="HandleValidSubmit">
+            <MudStack Spacing="2">
+
+                <!-- Name -->
+                <MudTextField @bind-Value="item.Name" Label="Name" Required="true"/>
+
+                <!-- Description -->
+                <MudTextField @bind-Value="item.Description"
+                              Label="Beschreibung"
+                              Lines="3"
+                              Required="true"/>
+
+                <!-- Category -->
+                <MudSelect T="int" Label="Kategorie" @bind-Value="item.CategoryId" Required="true">
+                    @foreach (var c in categories)
+                    {
+                        <MudSelectItem Value="@c.CategoryId">@c.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <!-- Condition -->
+                <MudSelect T="string" Label="Zustand" @bind-Value="item.Condition" Required="true">
+                </MudSelect>
+
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Type="Submit">
+                    Speichern
+                </MudButton>
+            </MudStack>
+        </EditForm>
+    </MudPaper>
+}
+
+@code {
+    private Item item = new();
+    private List<ItemCategory> categories = new();
+    private bool _isAdmin;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        _isAdmin = user.IsInRole("Admin");
+        
+        categories = await _context.Categories
+            .OrderBy(c => c.CategoryId)
+            .ToListAsync();
+
+        // default date
+        item.DateAdded = DateTime.Now;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        await _context.Items.AddAsync(item);
+        await _context.SaveChangesAsync();
+
+        Nav.NavigateTo("/main");
+    }
+}
