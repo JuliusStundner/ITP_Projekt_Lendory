@@ -1,9 +1,9 @@
-﻿@page "/main"
+﻿@page "/"
 @using Lendory.Data
 @using Lendory.Entities
 @using Microsoft.EntityFrameworkCore
 @inject ApplicationDbContext _context
-
+<MudContainer>
 <div class="page-container">
 
     <!-- Header -->
@@ -26,12 +26,32 @@
     }
     else
     {
-    <div class="item-grid">
-        @foreach (var item in _items)
-        {
-        <div class="item-card">@item.Name</div>
-        }
-    </div>
+        <div class="item-grid">
+            @foreach (var item in _items)
+            {
+                <NavLink href="@($"/items/{item.ItemId}")" class="item-link">
+
+                    @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+                    {
+                        <img src="@item.ImageUrl"
+                             class="item-image" />
+                    }
+                    else
+                    {
+                        <div class="item-image placeholder">
+                            <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported"
+                                     Size="Size.Large" />
+                        </div>
+                    }
+
+                    <div class="item-card">
+                        @item.Name
+                    </div>
+
+                </NavLink>
+            }
+        </div>
+
     }
 
     <!-- Need Help -->
@@ -53,7 +73,7 @@
     </section>
 
 </div>
-
+</MudContainer>
 <style>
     .page-container {
         display: flex;
@@ -98,15 +118,46 @@
         gap: 1rem;
         text-align: center;
     }
+
+    .item-link {
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .item-card {
+        cursor: pointer;
+        transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    .item-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+
+    .item-image {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        object-fit: cover;
+        border-radius: 12px;
+    }
+
+    .item-image.placeholder {
+        background: #f3f3f3;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+    }
+
 </style>
 
 @code {
-    private List<Item>? _items;
+private List<Item>? _items;
 
-    protected override async Task OnInitializedAsync()
-    {
-        _items = await _context.Items
-            .OrderBy(i => i.Name)
-            .ToListAsync();
-    }
+protected override async Task OnInitializedAsync()
+{
+_items = await _context.Items
+.OrderBy(i => i.Name)
+.ToListAsync();
+}
 }

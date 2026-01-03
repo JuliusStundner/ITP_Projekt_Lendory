@@ -1,0 +1,117 @@
+﻿@page "/deleteItem"
+
+@using Lendory.Data
+@using Lendory.Entities
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+@using MudBlazor
+
+@inject ApplicationDbContext _context
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Items löschen</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+
+    <MudText Typo="Typo.h5" Class="mb-4">
+        Items löschen
+    </MudText>
+
+    <MudText Typo="Typo.body2">
+        Items geladen: @_items.Count
+    </MudText>
+
+    @if (_items.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">
+            Keine Items vorhanden.
+        </MudAlert>
+    }
+    else
+    {
+        <MudPaper Elevation="2" Class="pa-4">
+
+            <MudList T="string" Dense="true">
+                @foreach (var item in _items)
+                {
+                    <MudListItem T="string">
+
+                        <MudListItemAvatar>
+                            @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+                            {
+                                <MudAvatar Image="@item.ImageUrl" Size="Size.Medium" />
+                            }
+                            else
+                            {
+                                <MudAvatar Icon="@Icons.Material.Filled.Inventory2" />
+                            }
+                        </MudListItemAvatar>
+
+                        <MudListItemText>
+                            <MudText Typo="Typo.subtitle1">
+                                @item.Name
+                            </MudText>
+                        </MudListItemText>
+
+                        <MudSpacer />
+
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error"
+                                       OnClick="() => ConfirmDelete(item)" />
+                    </MudListItem>
+
+                    <MudDivider />
+                }
+            </MudList>
+
+        </MudPaper>
+    }
+
+</MudContainer>
+
+@code {
+
+    private List<Item> _items = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (!user.IsInRole("Admin"))
+            return;
+
+        _items = await _context.Items
+            .OrderBy(i => i.Name)
+            .ToListAsync();
+    }
+
+    private async Task ConfirmDelete(Item item)
+    {
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = $"Willst du das Item „{item.Name}“ wirklich löschen?",
+            ["ButtonText"] = "Löschen",
+            ["Color"] = Color.Error
+        };
+
+        var dialog = DialogService.Show<ConfirmDialog>(
+            "Item löschen",
+            parameters,
+            new DialogOptions { CloseOnEscapeKey = true });
+
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            _context.Items.Remove(item);
+            await _context.SaveChangesAsync();
+
+            _items.Remove(item);
+
+            Snackbar.Add("Item gelöscht", Severity.Success);
+        }
+    }
+}

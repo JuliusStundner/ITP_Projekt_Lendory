@@ -16,7 +16,7 @@ public class ItemCategory
     [Column("NAME")]
     [StringLength(255)]
     public string Name { get; set; }
-
+    
     [Column("DESCRIPTION")]
     public string Description { get; set; }
 

@@ -49,3 +49,18 @@ h1:focus {
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
 }
+
+
+/* Pflicht-Fix für MudBlazor auf Mobile */
+.mud-button,
+.mud-icon-button,
+.mud-appbar button {
+    touch-action: manipulation;
+}
+
+/* Entfernt 300ms Mobile Tap Delay */
+button,
+.mud-button,
+.mud-icon-button {
+    touch-action: manipulation;
+}

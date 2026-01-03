@@ -4,6 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using Lendory.Components;
 using Lendory.Components.Account;
 using Lendory.Data;
+using Lendory.Domain;
+using Lendory.Entities;
+using Model.Domain;
 using MudBlazor.Services;
 
 
@@ -32,7 +35,11 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>(
         new MySqlServerVersion (new Version ( major: 8, minor: 0, build: 27)))) ;
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
+builder.Services.AddScoped<ARepository<ItemCategory>, ItemCategoryRepository>();
+builder.Services.AddScoped<ARepository<Item>, ItemRepository>();
+
+
+builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddSignInManager()
     .AddDefaultTokenProviders();
@@ -57,7 +64,6 @@ else
 }
 
 app.UseHttpsRedirection();
-
 app.UseStaticFiles();
 app.UseAntiforgery();
 
@@ -65,6 +71,5 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 // Add additional endpoints required by the Identity /Account Razor components.
-app.MapAdditionalIdentityEndpoints();
 
 app.Run();

@@ -1,0 +1,96 @@
+﻿@page "/createCategory"
+
+@using Lendory.Entities
+@using Model.Domain
+@using Microsoft.Extensions.Logging
+
+@inject ARepository<ItemCategory> CategoryRepository
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject ILogger<CreateCategory> Logger
+
+<PageTitle>Create Category</PageTitle>
+
+<MudPaper Elevation="4" Class="pa-6 mx-auto mt-6" Style="max-width: 520px;">
+
+    <MudText Typo="Typo.h5" Class="mb-4">
+        Neue Kategorie erstellen
+    </MudText>
+
+    <!-- NAME -->
+    <MudTextField T="string"
+                  Label="Name"
+                  @bind-Value="_category.Name"
+                  Variant="Variant.Outlined"
+                  Required="true" />
+
+    <!-- DESCRIPTION -->
+    <MudTextField T="string"
+                  Label="Beschreibung"
+                  @bind-Value="_category.Description"
+                  Lines="3"
+                  Variant="Variant.Outlined"
+                  Class="mt-3" />
+
+    <!-- HOUR RATE -->
+    <MudNumericField T="decimal"
+                     Label="Stundensatz (€)"
+                     @bind-Value="_category.HourRate"
+                     Min="0"
+                     Variant="Variant.Outlined"
+                     Class="mt-3"
+                     Adornment="Adornment.Start"
+                     AdornmentText="€" />
+
+    <MudDivider Class="my-4" />
+
+    <div class="d-flex justify-end gap-2">
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Default"
+                   ButtonType="ButtonType.Button"
+                   OnClick="Cancel">
+            Abbrechen
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   ButtonType="ButtonType.Button"
+                   OnClick="Save">
+            Speichern
+        </MudButton>
+    </div>
+
+</MudPaper>
+
+@code {
+
+    private ItemCategory _category = new();
+
+    private async Task Save()
+    {
+        Logger.LogInformation("SAVE CLICKED");
+
+        // optionale Minimal-Checks
+        if (string.IsNullOrWhiteSpace(_category.Name))
+        {
+            Snackbar.Add("Name darf nicht leer sein", Severity.Error);
+            return;
+        }
+
+        if (_category.HourRate <= 0)
+        {
+            Snackbar.Add("Stundensatz muss größer als 0 sein", Severity.Error);
+            return;
+        }
+
+        await CategoryRepository.CreateAsync(_category);
+
+        Snackbar.Add("Kategorie erfolgreich erstellt", Severity.Success);
+        Nav.NavigateTo("/main");
+    }
+
+    private void Cancel()
+    {
+        Nav.NavigateTo("/main");
+    }
+}

@@ -1,0 +1,84 @@
+﻿@using MudBlazor
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<MudDialog MaxWidth="MaxWidth.Small" FullWidth="true">
+
+    
+    <DialogContent>
+
+        <MudStack Spacing="3">
+
+            <MudAlert Severity="Severity.Info">
+                Das Schreiben erfolgt über die App <b>NFC Tools</b>.<br />
+                Dieser Schritt ist manuell.
+            </MudAlert>
+
+            <MudText Typo="Typo.body2">
+                1️⃣ NFC Tools öffnen<br />
+                2️⃣ <b>Write</b> auswählen<br />
+                3️⃣ <b>URL</b> einfügen<br />
+                4️⃣ NFC-Tag anhalten
+            </MudText>
+
+            <MudText Typo="Typo.subtitle2">
+                Zu speichernde URL:
+            </MudText>
+
+            <MudTextField Value="@ItemUrl"
+                          ReadOnly="true"
+                          Variant="Variant.Outlined"
+                          FullWidth
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@Icons.Material.Filled.ContentCopy"
+                          OnAdornmentClick="CopyToClipboard" />
+
+
+        </MudStack>
+
+    </DialogContent>
+
+    <DialogActions>
+        
+        
+        <!-- ZURÜCK ZUM ITEM -->
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   Size="Size.Small"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="GoBackToItem">
+            Zurück
+        </MudButton>
+
+        <MudSpacer />
+
+        
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.OpenInNew"
+                   OnClick="OpenNfcTools">
+            NFC Tools öffnen
+        </MudButton>
+    </DialogActions>
+
+</MudDialog>
+
+@code {
+    [Parameter]
+    public string ItemUrl { get; set; } = string.Empty;
+
+    private async Task OpenNfcTools()
+    {
+        await JS.InvokeVoidAsync("openNfcToolsApp", ItemUrl);
+    }
+    private async Task CopyToClipboard()
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", ItemUrl);
+    }
+
+    private void GoBackToItem()
+    {
+        // Navigiert zurück zur Item-Seite
+        Nav.NavigateTo(ItemUrl);
+    }
+}

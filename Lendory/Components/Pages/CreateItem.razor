@@ -7,71 +7,158 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @using Microsoft.AspNetCore.Components.Authorization
 
-@if (!_isAdmin)
+<PageTitle>Create Item</PageTitle>
+
+@if (_isAdmin)
 {
-    <MudAlert Severity="Severity.Error" Variant="Variant.Filled">Dieser Bereich ist nur für Admins!</MudAlert>
+    <MudAlert Severity="Severity.Error" Variant="Variant.Filled">
+        Dieser Bereich ist nur für Admins!
+    </MudAlert>
 }
 else
 {
-    <MudPaper Class="pa-6 mx-auto mt-6" Style="max-width:600px;">
-        <MudText Typo="Typo.h5" Class="mb-4">Neues Item erstellen</MudText>
+    <MudPaper Elevation="4" Class="pa-6 mx-auto mt-6" Style="max-width: 520px;">
 
-        <EditForm Model="@item" OnValidSubmit="HandleValidSubmit">
-            <MudStack Spacing="2">
+        <MudText Typo="Typo.h5" Class="mb-4">
+            Neues Item erstellen
+        </MudText>
 
-                <!-- Name -->
-                <MudTextField @bind-Value="item.Name" Label="Name" Required="true"/>
+        <!-- NAME -->
+        <MudTextField T="string"
+                      Label="Name"
+                      @bind-Value="_item.Name"
+                      Variant="Variant.Outlined"
+                      Required="true" />
 
-                <!-- Description -->
-                <MudTextField @bind-Value="item.Description"
-                              Label="Beschreibung"
-                              Lines="3"
-                              Required="true"/>
+        <!-- DESCRIPTION -->
+        <MudTextField T="string"
+                      Label="Beschreibung"
+                      @bind-Value="_item.Description"
+                      Lines="3"
+                      Variant="Variant.Outlined"
+                      Class="mt-3" />
 
-                <!-- Category -->
-                <MudSelect T="int" Label="Kategorie" @bind-Value="item.CategoryId" Required="true">
-                    @foreach (var c in categories)
-                    {
-                        <MudSelectItem Value="@c.CategoryId">@c.Name</MudSelectItem>
-                    }
-                </MudSelect>
+        <!-- CATEGORY -->
+        <MudSelect T="ItemCategory"
+                   Label="Kategorie"
+                   @bind-Value="selectedCategory"
+                   Variant="Variant.Outlined"
+                   Class="mt-3"
+                   ToStringFunc="c => c.Name"
+                   Required="true">
 
-                <!-- Condition -->
-                <MudSelect T="string" Label="Zustand" @bind-Value="item.Condition" Required="true">
-                </MudSelect>
+            @foreach (var c in _categories)
+            {
+                <MudSelectItem Value="@c">@c.Name</MudSelectItem>
+            }
+        </MudSelect>
 
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Type="Submit">
-                    Speichern
-                </MudButton>
-            </MudStack>
-        </EditForm>
+        <!-- CONDITION -->
+        <MudTextField T="string"
+                      Label="Zustand"
+                      @bind-Value="_item.Condition"
+                      Variant="Variant.Outlined"
+                      Class="mt-3" />
+
+        <MudDivider Class="my-4" />
+
+        <InputFile OnChange="OnFileSelected" accept="image/*" />
+        <br/>
+        @if (_previewImage != null)
+        {
+            <img src="@_previewImage" style="max-width:200px; border-radius:12px;" />
+        }
+
+        
+        <div class="d-flex justify-end gap-2">
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Default"
+                       ButtonType="ButtonType.Button"
+                       OnClick="Cancel">
+                Abbrechen
+            </MudButton>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       ButtonType="ButtonType.Button"
+                       OnClick="Save">
+                Speichern
+            </MudButton>
+        </div>
+
     </MudPaper>
 }
 
 @code {
-    private Item item = new();
-    private List<ItemCategory> categories = new();
+    private Item _item = new();
+    private List<ItemCategory> _categories = new();
     private bool _isAdmin;
+    private ItemCategory? selectedCategory;
+    IBrowserFile? _file;
+    string? _previewImage;
+
+    async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _file = e.File;
+
+        using var stream = _file.OpenReadStream(5_000_000);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+
+        _previewImage = $"data:{_file.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
+    }
+
+    public async Task<string> SaveImageAsync(IBrowserFile file)
+    {
+        var allowed = new[] { "image/jpeg", "image/png", "image/webp" };
+        if (!allowed.Contains(file.ContentType))
+            throw new Exception("Ungültiger Bildtyp");
+
+        var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.Name)}";
+        var path = Path.Combine("wwwroot/uploads/items", fileName);
+
+        await using var fs = new FileStream(path, FileMode.Create);
+        await file.OpenReadStream(5_000_000).CopyToAsync(fs);
+
+        return $"/uploads/items/{fileName}";
+    }
+
     
     protected override async Task OnInitializedAsync()
-    {
+    { 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
         _isAdmin = user.IsInRole("Admin");
         
-        categories = await _context.Categories
+        _categories = await _context.Categories
             .OrderBy(c => c.CategoryId)
             .ToListAsync();
-
         // default date
-        item.DateAdded = DateTime.Now;
+        _item.DateAdded = DateTime.Now;
     }
 
-    private async Task HandleValidSubmit()
+    private async Task Save()
     {
-        await _context.Items.AddAsync(item);
+        if (selectedCategory is null)
+            return;
+
+        _item.CategoryId = selectedCategory.CategoryId;
+
+        // 👉 WENN ein Bild ausgewählt wurde → speichern
+        if (_file != null)
+        {
+            _item.ImageUrl = await SaveImageAsync(_file);
+        }
+
+        await _context.Items.AddAsync(_item);
         await _context.SaveChangesAsync();
 
+        Nav.NavigateTo("/main");
+    }
+
+    
+    private void Cancel()
+    {
         Nav.NavigateTo("/main");
     }
 }

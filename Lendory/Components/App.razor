@@ -2,22 +2,35 @@
 <html lang="en">
 
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <base href="/" />
-    <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
-    <link rel="stylesheet" href="app.css" />
-    <link rel="stylesheet" href="Lendory.styles.css" />
-    <link rel="icon" type="image/png" href="favicon.png" />
-    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
-    <link href="_content/MudBlazor/MudBlazor.min.css?v=@(MudBlazor.Metadata.Version)" rel="stylesheet" />
-    <HeadOutlet />
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#5b4bd8" />
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <base href="/"/>
+
+    <link rel="stylesheet" href="bootstrap/bootstrap.min.css"/>
+    <link rel="stylesheet" href="app.css"/>
+    <link rel="stylesheet" href="Lendory.styles.css"/>
+    <link rel="icon" type="image/png" href="favicon.png"/>
+
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet"/>
+    <link href="_content/MudBlazor/MudBlazor.min.css?v=@(MudBlazor.Metadata.Version)" rel="stylesheet"/>
+
+    <HeadOutlet/>
 </head>
 
 <body>
-    <Routes />
-    <script src="_framework/blazor.web.js"></script>
-    <script src="_content/MudBlazor/MudBlazor.min.js?v=@(MudBlazor.Metadata.Version)"></script>
-</body>
 
+<Routes @rendermode="InteractiveServer" />
+
+<!-- 🔴 WICHTIG: Reihenfolge -->
+<script src="_framework/blazor.web.js"></script>
+
+<!-- ✅ PWA / NFC SCRIPTS NACH BLAZOR -->
+<script src="pwa-install.js"></script>
+<script src="nfc.js"></script>
+
+<script src="_content/MudBlazor/MudBlazor.min.js?v=@(MudBlazor.Metadata.Version)"></script>
+
+</body>
 </html>

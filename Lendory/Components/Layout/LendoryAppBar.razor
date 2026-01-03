@@ -1,0 +1,49 @@
+﻿@using MudBlazor
+
+<MudBreakpointProvider OnBreakpointChanged="OnBreakpointChanged" />
+
+<MudAppBar Elevation="1" Color="Color.Default" Dense="true">
+    <!-- LEFT -->
+    <MudText Typo="Typo.h6" Class="fw-bold">
+        LENDORY
+    </MudText>
+
+    <MudSpacer />
+
+    <!-- ICON + TEXT = EIN CLICK -->
+    <div @onclick="ToggleDrawer"
+                  class="d-flex align-center gap-1"
+                  style="cursor:pointer">
+
+        <MudIcon Icon="@Icons.Material.Filled.Menu" 
+                 Color="Color.Inherit"/>
+
+        @if (_breakpoint == Breakpoint.Md 
+             || _breakpoint == Breakpoint.Lg 
+             || _breakpoint == Breakpoint.Xl)
+        {
+            <MudText Typo="Typo.h6" Class="fw-bold">
+                Menü
+            </MudText>
+        }
+
+    </div>
+</MudAppBar>
+
+@code {
+    [Parameter]
+    public EventCallback OnMenuClicked { get; set; }
+
+    private Breakpoint _breakpoint;
+
+    private async Task ToggleDrawer()
+    {
+        await OnMenuClicked.InvokeAsync();
+    }
+
+    private void OnBreakpointChanged(Breakpoint breakpoint)
+    {
+        _breakpoint = breakpoint;
+        StateHasChanged();
+    }
+}

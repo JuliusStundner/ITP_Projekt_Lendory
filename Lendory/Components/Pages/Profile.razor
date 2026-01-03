@@ -1,106 +1,172 @@
 ﻿@page "/profile"
+
 @using Lendory.Data
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Identity
+
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
 
+<AuthorizeView Context="authState">
 
-<MudPaper Class="pa-6 mx-auto mt-6 elevation-2" Style="max-width: 750px; border-radius: 18px;">
-    <MudStack Spacing="4">
+    <!-- ===================================================== -->
+    <!-- NOT LOGGED IN -->
+    <!-- ===================================================== -->
+    <NotAuthorized>
 
-        <!-- Profile Header -->
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4">
+        <div class="d-flex justify-content-center align-items-center"
+             style="min-height: 80vh;">
 
-            <MudAvatar Size="Size.Large" Image="@avatarUrl" Class="elevation-4" />
+            <MudPaper Class="pa-6"
+                      Style="width: 420px; border-radius: 18px;"
+                      Elevation="4">
 
-            <MudStack Spacing="2">
-                <MudText Typo="Typo.h5" Class="fw-bold">@userName</MudText>
+                <MudStack Spacing="3">
 
-                <MudStack Row="true" Spacing="1">
-                    @foreach (var role in roles)
-                    {
-                        <MudChip T="string"
-                                 Color="Color.Primary"
-                                 Variant="Variant.Filled"
-                                 Class="me-1">
-                            @role
-                        </MudChip>
-                    }
+                    <MudText Typo="Typo.h6" Align="Align.Center">
+                        Profil
+                    </MudText>
+
+                    <MudButton FullWidth="true"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="GoToLogin">
+                        Anmelden
+                    </MudButton>
+
+                    <MudButton FullWidth="true"
+                               Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               OnClick="GoToRegister">
+                        Registrieren
+                    </MudButton>
+
                 </MudStack>
 
-                <MudText Typo="Typo.body2" Class="text-secondary">
-                    Mitglied seit @createdAt.ToShortDateString()
-                </MudText>
+            </MudPaper>
+
+        </div>
+
+    </NotAuthorized>
+
+    <!-- ===================================================== -->
+    <!-- LOGGED IN -->
+    <!-- ===================================================== -->
+    <Authorized>
+
+        <MudPaper Class="pa-6 mx-auto mt-6 elevation-2"
+                  Style="max-width: 750px; border-radius: 18px;">
+
+            <MudStack Spacing="4">
+
+                <!-- Profile Header -->
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4">
+
+                    <MudAvatar Size="Size.Large"
+                               Image="@avatarUrl"
+                               Class="elevation-4" />
+
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h5" Class="fw-bold">
+                            @userName
+                        </MudText>
+
+                        <MudStack Row="true" Spacing="1">
+                            @foreach (var role in roles)
+                            {
+                                <MudChip T="string"
+                                         Color="Color.Primary"
+                                         Variant="Variant.Filled">
+                                    @role
+                                </MudChip>
+                            }
+                        </MudStack>
+
+                        <MudText Typo="Typo.body2" Class="text-secondary">
+                            Mitglied seit @createdAt.ToShortDateString()
+                        </MudText>
+                    </MudStack>
+
+                    <MudSpacer />
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Error"
+                               StartIcon="@Icons.Material.Filled.Logout"
+                               OnClick="Logout">
+                        Abmelden
+                    </MudButton>
+
+                </MudStack>
+
+                <MudDivider Class="my-4" />
+
+                <!-- Profil bearbeiten -->
+                <MudPaper Class="pa-4" Style="border-radius: 12px;">
+
+                    <MudText Typo="Typo.h6" Class="mb-2">
+                        Profil bearbeiten
+                    </MudText>
+
+                    <MudStack Spacing="3">
+
+                        <MudTextField T="string"
+                                      Label="Benutzername"
+                                      @bind-Value="editUserName"
+                                      FullWidth="true"
+                                      Required="true" />
+
+                        <MudTextField T="string"
+                                      Label="E-Mail"
+                                      @bind-Value="editEmail"
+                                      FullWidth="true"
+                                      Required="true" />
+
+                        <MudTextField T="string"
+                                      Label="Über mich"
+                                      @bind-Value="editAbout"
+                                      Lines="3"
+                                      FullWidth="true" />
+
+                        <MudText Typo="Typo.subtitle2">
+                            Avatar URL
+                        </MudText>
+
+                        <MudTextField T="string"
+                                      Label="Avatar URL"
+                                      @bind-Value="editAvatarUrl"
+                                      FullWidth="true" />
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   OnClick="SaveChanges">
+                            Änderungen speichern
+                        </MudButton>
+
+                    </MudStack>
+
+                </MudPaper>
+
             </MudStack>
 
-            <MudSpacer />
-
-            <!-- Logout -->
-            <MudButton Variant="Variant.Outlined"
-                       Color="Color.Error"
-                       OnClick="Logout"
-                       StartIcon="@Icons.Material.Filled.Logout">
-                Abmelden
-            </MudButton>
-
-        </MudStack>
-
-        <!-- Divider -->
-        <MudDivider Class="my-4" />
-
-        <!-- Profil bearbeiten -->
-        <MudPaper Class="pa-4" Style="border-radius: 12px;">
-            <MudText Typo="Typo.h6" Class="mb-2">Profil bearbeiten</MudText>
-
-            <MudStack Spacing="3">
-
-                <MudTextField Label="Benutzername"
-                              @bind-Value="editUserName"
-                              FullWidth="true"
-                              Required="true"/>
-
-                <MudTextField Label="E-Mail"
-                              @bind-Value="editEmail"
-                              FullWidth="true"
-                              Required="true"/>
-
-                <MudTextField Label="Über mich"
-                              @bind-Value="editAbout"
-                              Lines="3"
-                              FullWidth="true" />
-
-                <!-- Avatar ändern -->
-                <MudText Typo="Typo.subtitle2">Avatar URL</MudText>
-                <MudTextField Label="Avatar URL"
-                              @bind-Value="editAvatarUrl"
-                              FullWidth="true" />
-
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Save"
-                           OnClick="SaveChanges">
-                    Änderungen speichern
-                </MudButton>
-
-            </MudStack>
         </MudPaper>
 
-    </MudStack>
-</MudPaper>
+    </Authorized>
+
+</AuthorizeView>
+
 @code {
 
-    // Data
+    // =========================
+    // DATA
+    // =========================
     private string userName = "";
     private string avatarUrl = "";
     private List<string> roles = new();
     private DateTime createdAt = DateTime.Now;
 
-    private string aboutMe = "Hey! Ich bin neu auf Lendory!";
-    
-    // Edit fields
     private string editUserName = "";
     private string editEmail = "";
     private string editAvatarUrl = "";
@@ -111,33 +177,35 @@
         var auth = await AuthStateProvider.GetAuthenticationStateAsync();
         var principal = auth.User;
 
-        // echten IdentityUser laden
+        if (!principal.Identity?.IsAuthenticated ?? true)
+            return;
+
         var user = await UserManager.GetUserAsync(principal);
         if (user == null)
-        {
-            Nav.NavigateTo("/login");
             return;
-        }
 
         userName = user.UserName ?? "";
         editUserName = userName;
 
         editEmail = user.Email ?? "";
 
-        // Fake Avatar / AboutMe nur UI
-        avatarUrl = $"https://ui-avatars.com/api/?name={userName}&background=0D8ABC&color=fff";
+        avatarUrl =
+            $"https://ui-avatars.com/api/?name={userName}&background=0D8ABC&color=fff";
+
         editAvatarUrl = avatarUrl;
+        editAbout = "Hey! Ich bin neu auf Lendory!";
 
-        aboutMe = "Hey! Ich bin neu auf Lendory!";
-        editAbout = aboutMe;
+        try
+        {
+            roles = (await UserManager.GetRolesAsync(user)).ToList();
+        }
+        catch
+        {
+            roles = new();
+        }
 
-        // Rollen laden
-        roles = (await UserManager.GetRolesAsync(user)).ToList();
-
-        // Fake Join-Date da IdentityUser es nicht hat
         createdAt = DateTime.Now.AddMonths(-2);
     }
-
 
     private async Task SaveChanges()
     {
@@ -148,39 +216,41 @@
         if (user == null)
             return;
 
-        // Identity User aktualisieren
         user.UserName = editUserName;
         user.NormalizedUserName = editUserName.ToUpperInvariant();
 
         user.Email = editEmail;
         user.NormalizedEmail = editEmail.ToUpperInvariant();
 
-        // UI-only updates
-        userName = editUserName;
-        aboutMe = editAbout;
-        avatarUrl = editAvatarUrl;
-
-        // DB speichern
         var result = await UserManager.UpdateAsync(user);
 
         if (result.Succeeded)
         {
-            // Neue Identity-Cookies erzeugen
             await SignInManager.RefreshSignInAsync(user);
+
+            userName = editUserName;
+            avatarUrl = editAvatarUrl;
 
             StateHasChanged();
         }
-        else
-        {
-            Console.WriteLine("Fehler beim Speichern: "
-                              + string.Join(", ", result.Errors.Select(e => e.Description)));
-        }
     }
-
 
     private async Task Logout()
     {
         await SignInManager.SignOutAsync();
-        Nav.NavigateTo("/login", true);
+        Nav.NavigateTo("/Account/Login?returnUrl=/profile");
+    }
+
+    // =========================
+    // REDIRECT BUTTONS
+    // =========================
+    private void GoToLogin()
+    {
+        Nav.NavigateTo("/Account/Login?returnUrl=/profile");
+    }
+
+    private void GoToRegister()
+    {
+        Nav.NavigateTo("/Account/Register?returnUrl=/profile");
     }
 }

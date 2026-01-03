@@ -1,32 +1,106 @@
 ﻿@inherits LayoutComponentBase
+@using MudBlazor
+@inject IJSRuntime JS
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+
+    <!-- TOP APP BAR -->
+    <LendoryAppBar OnMenuClicked="ToggleDrawer" />
+
+    <!-- RIGHT DRAWER -->
+    <MudDrawer Anchor="Anchor.Right"
+               Open="@_drawerOpen"
+               Variant="DrawerVariant.Temporary"
+               Elevation="4"
+               ClipMode="DrawerClipMode.Never"
+               Width="280px">
+
+        <MudDrawerHeader>
+            <MudText Typo="Typo.h6">Menü</MudText>
+        </MudDrawerHeader>
+
+        <!-- NAVIGATION -->
+        <MudNavMenu Dense="true">
+            <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home">
+                Dashboard
+            </MudNavLink>
+
+            <MudNavLink Href="/main" Icon="@Icons.Material.Filled.Inventory">
+                Items
+            </MudNavLink>
+
+            <MudNavLink Href="/category" Icon="@Icons.Material.Filled.Category">
+                Kategorien
+            </MudNavLink>
+
+            <MudNavLink Href="/profile" Icon="@Icons.Material.Filled.Person">
+                Account
+            </MudNavLink>
+        </MudNavMenu>
+
+        <!-- 👇 SPACER → schiebt Inhalt nach unten -->
+        <MudSpacer />
+        <hr/>
+        <div>Admin-Funktionen</div>       
+        <MudNavLink Href="/createItem" Icon="@Icons.Material.Filled.Category">
+            Item erstellen
+        </MudNavLink>
+        <MudNavLink Href="/createCategory" Icon="@Icons.Material.Filled.Category">
+            Kategorie erstellen
+        </MudNavLink>
+        <MudNavLink Href="/deleteItem" Icon="@Icons.Material.Filled.Category">
+            Item löschen
+        </MudNavLink>
+        
+        <MudSpacer />
+
+        <!-- ⬇️ DOWNLOAD TEXT -->
+        <div class="drawer-download"
+             @onclick="InstallPwa">
+            Herunterladen
         </div>
 
-        @* Required *@
-        <MudThemeProvider />
-        <MudPopoverProvider />
+    </MudDrawer>
 
-        @* Needed for dialogs *@
-        <MudDialogProvider />
+    <!-- PAGE CONTENT -->
+    <MudMainContent>
+        @Body
+    </MudMainContent>
 
-        @* Needed for snackbars *@
-        <MudSnackbarProvider />
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+</MudLayout>
 
-<div id="blazor-error-ui">
-    An unhandled error has occurred.
-    <a href="" class="reload">Reload</a>
-    <a class="dismiss">🗙</a>
-</div>
+<style>
+    .drawer-download {
+        padding: 12px 20px;
+        font-size: 0.85rem;
+        color: rgba(0,0,0,0.45);
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .drawer-download:hover {
+        color: rgba(0,0,0,0.7);
+        text-decoration: underline;
+    }
+</style>
+
+@code {
+
+    private bool _drawerOpen;
+
+    private void ToggleDrawer()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    private async Task InstallPwa()
+    {
+        await JS.InvokeVoidAsync("installPwa");
+    }
+}

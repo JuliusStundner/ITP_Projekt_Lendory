@@ -160,6 +160,9 @@ namespace Lendory.Migrations
                         .HasColumnType("tinyint(1)")
                         .HasColumnName("AVAILABILITY");
 
+                    b.Property<string>("BorrowedByUserId")
+                        .HasColumnType("longtext");
+
                     b.Property<int>("CategoryId")
                         .HasColumnType("int")
                         .HasColumnName("CATEGORY_ID");

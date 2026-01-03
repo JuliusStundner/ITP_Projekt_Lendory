@@ -1,0 +1,226 @@
+﻿@page "/items/{ItemId:int}"
+
+@using Lendory.Data
+@using Lendory.Entities
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+
+
+@inject ApplicationDbContext _context
+@inject NavigationManager Nav
+@inject IDialogService DialogService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<MudPaper Class="pa-6 mx-auto mt-6"
+          Style="max-width: 900px; border-radius: 18px;"
+          Elevation="3">
+
+    @if (_item == null)
+    {
+        <MudText>Item nicht gefunden.</MudText>
+    }
+    else
+    {
+        <MudStack Spacing="4">
+
+            <!-- HEADER -->
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.h5" Class="fw-bold">
+                    @_item.Name
+                </MudText>
+
+                <MudSpacer />
+
+                <MudChip T="string"
+                         Color="@(_item.Availability ? Color.Success : Color.Error)">
+                    @(_item.Availability ? "Verfügbar" : "Ausgeborgt")
+                </MudChip>
+            </MudStack>
+
+            <!-- DESCRIPTION -->
+            <MudText Typo="Typo.body1">
+                Beschreibung: @_item.Description
+            </MudText>
+
+            @if (!string.IsNullOrWhiteSpace(_item.ImageUrl))
+            {
+                <img src="@_item.ImageUrl"
+                     class="item-image" />
+            }
+            else
+            {
+                <div class="item-image placeholder">
+                    <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported"
+                             Size="Size.Large" />
+                </div>
+            }
+            <MudDivider />
+
+            <!-- ACTIONS -->
+            <MudStack Row="true" Spacing="2">
+
+                @if (!_isAuthenticated)
+                {
+                    <MudAlert Severity="Severity.Info">
+                        Bitte  anmelden, um dieses Item auszuborgen.
+                    </MudAlert>
+                }
+                else if (_item.Availability)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Success"
+                               StartIcon="@Icons.Material.Filled.AssignmentReturn"
+                               @onclick="BorrowItem">
+                        Ausborgen
+                    </MudButton>
+                }
+                else if (_item.BorrowedByUserId == _currentUserId)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Error"
+                               StartIcon="@Icons.Material.Filled.Undo"
+                               @onclick="ReturnItem">
+                        Zurückgeben
+                    </MudButton>
+                }
+
+            </MudStack>
+            
+            @if(!_isAdmin){
+            <!-- NFC ACTION -->
+            <MudStack Row="true" JustifyContent="JustifyContent.FlexEnd">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Nfc"
+                           @onclick="OpenNfcDialog">
+                    Auf NFC-Tag speichern
+                </MudButton>
+            </MudStack>
+            
+            <MudStack Row="true" JustifyContent="JustifyContent.FlexEnd" Spacing="2">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.Delete"
+                           OnClick="ConfirmDelete">
+                    Item löschen
+                </MudButton>
+            </MudStack>
+            }
+            
+            
+        </MudStack>
+    }
+
+</MudPaper>
+
+@code {
+    [Parameter] public int ItemId { get; set; }
+
+    private Item? _item;
+    private string? _currentUserId;
+    private bool _isAuthenticated;
+    private bool _isAdmin;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 🔐 Auth
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        _isAdmin = user.IsInRole("Admin");
+
+        _isAuthenticated = user.Identity?.IsAuthenticated ?? false;
+        _currentUserId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        // 📦 Item laden
+        _item = await _context.Items
+            .FirstOrDefaultAsync(i => i.ItemId == ItemId);
+    }
+
+    // =========================
+    // BORROW
+    // =========================
+    private async Task BorrowItem()
+    {
+        if (!_isAuthenticated || _item == null)
+            return;
+
+        if (!_item.Availability)
+            return;
+
+        _item.Availability = false;
+        _item.BorrowedByUserId = _currentUserId;
+
+        await _context.SaveChangesAsync();
+        StateHasChanged();
+    }
+
+    // =========================
+    // RETURN
+    // =========================
+    private async Task ReturnItem()
+    {
+        if (!_isAuthenticated || _item == null)
+            return;
+
+        // 🔒 Nur der Ausleiher darf zurückgeben
+        if (_item.BorrowedByUserId != _currentUserId)
+            return;
+
+        _item.Availability = true;
+        _item.BorrowedByUserId = null;
+
+        await _context.SaveChangesAsync();
+        StateHasChanged();
+    }
+
+    // =========================
+    // NFC
+    // =========================
+    private void OpenNfcDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            { "ItemUrl", Nav.Uri }
+        };
+
+        DialogService.Show<NfcWriteDialog>(
+            "NFC-Tag beschreiben",
+            parameters);
+    }
+    
+    
+    
+    // =========================
+    // DELETE
+    // =========================
+    private async Task ConfirmDelete()
+    {
+        if (_item == null)
+            return;
+
+        bool? confirmed = await DialogService.ShowMessageBox(
+            title: "Item löschen",
+            message: $"Willst du das Item „{_item.Name}“ wirklich löschen?",
+            yesText: "Löschen",
+            cancelText: "Abbrechen",
+            options: new DialogOptions { CloseOnEscapeKey = true }
+        );
+
+        if (confirmed != true)
+            return;
+
+        // 🔥 SQL DELETE – stabil, kein EF-Tracking
+        await _context.Database.ExecuteSqlRawAsync(
+            "DELETE FROM ITEM WHERE ITEM_ID = {0}",
+            _item.ItemId
+        );
+
+        Nav.NavigateTo("/main", forceLoad: true);
+    }
+
+
+
+
+
+}

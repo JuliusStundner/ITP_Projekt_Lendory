@@ -34,4 +34,9 @@ public class Item
     [Required]
     [Column("DATE_ADDED")]
     public DateTime DateAdded { get; set; } = DateTime.UtcNow;
+    
+    public string? BorrowedByUserId { get; set; }
+
+    public string? ImageUrl { get; set; }
+
 }
