@@ -91,12 +91,17 @@
 
                     <MudSpacer />
 
-                    <MudButton Variant="Variant.Outlined"
-                               Color="Color.Error"
-                               StartIcon="@Icons.Material.Filled.Logout"
-                               OnClick="Logout">
-                        Abmelden
-                    </MudButton>
+                    <form method="post" action="/Account/Logout">
+                        <input type="hidden" name="returnUrl" value="" />
+
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.Logout"
+                                   ButtonType="ButtonType.Submit">
+                            Abmelden
+                        </MudButton>
+                    </form>
+
 
                 </MudStack>
 
@@ -233,12 +238,6 @@
 
             StateHasChanged();
         }
-    }
-
-    private async Task Logout()
-    {
-        await SignInManager.SignOutAsync();
-        Nav.NavigateTo("/Account/Login?returnUrl=/profile");
     }
 
     // =========================

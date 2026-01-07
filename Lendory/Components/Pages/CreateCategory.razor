@@ -86,11 +86,11 @@
         await CategoryRepository.CreateAsync(_category);
 
         Snackbar.Add("Kategorie erfolgreich erstellt", Severity.Success);
-        Nav.NavigateTo("/main");
+        Nav.NavigateTo("/");
     }
 
     private void Cancel()
     {
-        Nav.NavigateTo("/main");
+        Nav.NavigateTo("/");
     }
 }

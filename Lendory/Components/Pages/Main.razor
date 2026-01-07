@@ -3,78 +3,98 @@
 @using Lendory.Entities
 @using Microsoft.EntityFrameworkCore
 @inject ApplicationDbContext _context
+
 <MudContainer>
-<div class="page-container">
+    <div class="page-container">
 
-    <!-- Header -->
-    <header class="header">
-        <h2>Aktuell Ausgeliehen</h2>
+        <!-- Header -->
+        <header class="header">
+            <h2>Aktuell Ausgeliehen</h2>
 
-        <div class="header-actions">
-            <button>
-                <NavLink href="/category" class="nav-link">
-                    Kategorien
-                </NavLink>
-            </button>
-            <button>Prop anfordern</button>
-        </div>
-    </header>
+            <div class="header-actions">
+                <button>
+                    <NavLink href="/category" class="nav-link">
+                        Kategorien
+                    </NavLink>
+                </button>
+                <button>Prop anfordern</button>
+            </div>
+        </header>
 
-    @if (_items == null)
-    {
-    <p>Lade Items...</p>
-    }
-    else
-    {
+        @if (_items == null)
+        {
+        <p>Lade Items...</p>
+        }
+        else
+        {
         <div class="item-grid">
             @foreach (var item in _items)
             {
-                <NavLink href="@($"/items/{item.ItemId}")" class="item-link">
+            <NavLink href="@($"/items/{item.ItemId}")" class="item-link">
 
-                    @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
-                    {
-                        <img src="@item.ImageUrl"
-                             class="item-image" />
-                    }
-                    else
-                    {
+                <div class="item-card">
+
+                    <!-- IMAGE + NFC -->
+                    <div class="item-image-wrapper">
+
+                        @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+                        {
+                        <img src="@item.ImageUrl" class="item-image" />
+                        }
+                        else
+                        {
                         <div class="item-image placeholder">
                             <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported"
                                      Size="Size.Large" />
                         </div>
-                    }
+                        }
 
-                    <div class="item-card">
-                        @item.Name
+                        <!-- NFC ICON -->
+                        <div class="nfc-badge @(item.HasNfc ? "nfc-active" : "nfc-inactive")">
+                            <MudIcon Icon="@Icons.Material.Filled.Nfc" />
+                        </div>
+
                     </div>
 
-                </NavLink>
+                    <!-- FOOTER -->
+                    <div class="item-footer">
+                        <span class="item-name">@item.Name</span>
+                        <span class="status-dot @(item.Availability ? "available" : "unavailable")"></span>
+                    </div>
+
+                </div>
+
+            </NavLink>
             }
         </div>
+        }
 
-    }
+        <!-- Help -->
+        <section class="section">
+            <h3>Hilfe benötigt?</h3>
 
-    <!-- Need Help -->
-    <section class="section">
-        <h3>Hilfe benötigt?</h3>
+            <div class="help-grid">
+                <div class="help-card">Wie fordere ich ein Prop an?</div>
+                <div class="help-card">Wie erfolgt ein Verleih Prozess?</div>
+                <div class="help-card">Wie erfolgt der Zahlungprozess?</div>
+            </div>
+        </section>
 
-        <div class="help-grid">
-            <div class="help-card">Wie fordere ich ein Prop an?</div>
-            <div class="help-card">Wie erfolgt ein Verleih Prozess?</div>
-            <div class="help-card">Wie erfolgt der Zahlungprozess?</div>
-        </div>
-    </section>
+        <!-- Scan -->
+        <section class="scan-section">
+            <h3>Bist du im Lager?</h3>
+            <p>Scanne den NFC-Tag oder den QR-Code, um dein Prop zu finden.</p>
+            <button>Scan!</button>
+        </section>
 
-    <!-- Scan Section -->
-    <section class="scan-section">
-        <h3>Bist du im Lager?</h3>
-        <p>Scanne den NFC-Tag oder den QR-Code, um dein Prop zu finden.</p>
-        <button>Scan!</button>
-    </section>
-
-</div>
+    </div>
 </MudContainer>
+
 <style>
+    /* =========================
+       PAGE LAYOUT
+    ========================= */
+
     .page-container {
         display: flex;
         flex-direction: column;
@@ -93,62 +113,147 @@
         gap: 1rem;
     }
 
-    .section {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
+    /* =========================
+       GRIDS
+    ========================= */
 
-    .item-grid, .help-grid {
+    .item-grid,
+    .help-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
         gap: 1rem;
     }
 
-    .item-card, .help-card {
-        border: 1px solid #ccc;
-        padding: 1rem;
-    }
-
-    .scan-section {
-        border: 1px solid #ccc;
-        padding: 1rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
-    }
+    /* =========================
+       LINK
+    ========================= */
 
     .item-link {
         text-decoration: none;
         color: inherit;
+        display: block;
     }
 
+    /* =========================
+       ITEM CARD
+    ========================= */
+
     .item-card {
-        cursor: pointer;
-        transition: transform 0.1s ease, box-shadow 0.1s ease;
+        border: 1px solid #ccc;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        transition: transform 0.12s ease, box-shadow 0.12s ease;
     }
 
     .item-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
+    }
+
+    /* =========================
+       IMAGE + NFC
+    ========================= */
+
+    .item-image-wrapper {
+        position: relative;
     }
 
     .item-image {
         width: 100%;
         aspect-ratio: 1 / 1;
         object-fit: cover;
-        border-radius: 12px;
+        display: block;
     }
 
     .item-image.placeholder {
         background: #f3f3f3;
+        color: #999;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #999;
     }
 
+    /* NFC BADGE */
+
+    .nfc-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+
+    .nfc-active {
+        color: #000;
+    }
+
+    .nfc-inactive {
+        color: #aaa;
+    }
+
+    /* =========================
+       FOOTER
+    ========================= */
+
+    .item-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.65rem 0.8rem;
+    }
+
+    .item-name {
+        font-size: 0.95rem;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* =========================
+       STATUS DOT
+    ========================= */
+
+    .status-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+
+    .available {
+        background: #2ecc71;
+    }
+
+    .unavailable {
+        background: #e74c3c;
+    }
+
+    /* =========================
+       HELP / SCAN
+    ========================= */
+
+    .help-card {
+        border: 1px solid #ccc;
+        padding: 1rem;
+        border-radius: 10px;
+    }
+
+    .scan-section {
+        border: 1px solid #ccc;
+        padding: 1rem;
+        border-radius: 12px;
+        text-align: center;
+    }
 </style>
 
 @code {

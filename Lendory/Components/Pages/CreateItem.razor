@@ -2,14 +2,16 @@
 @using Lendory.Data
 @using Lendory.Entities
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+
 @inject ApplicationDbContext _context
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
-@using Microsoft.AspNetCore.Components.Authorization
 
 <PageTitle>Create Item</PageTitle>
 
-@if (_isAdmin)
+@if (!_isAdmin)
 {
     <MudAlert Severity="Severity.Error" Variant="Variant.Filled">
         Dieser Bereich ist nur für Admins!
@@ -62,25 +64,35 @@ else
 
         <MudDivider Class="my-4" />
 
+        <!-- IMAGE UPLOAD -->
         <InputFile OnChange="OnFileSelected" accept="image/*" />
-        <br/>
-        @if (_previewImage != null)
+
+        @if (_imageError)
         {
-            <img src="@_previewImage" style="max-width:200px; border-radius:12px;" />
+            <MudText Color="Color.Error" Typo="Typo.caption">
+                Bitte ein Bild auswählen
+            </MudText>
         }
 
-        
+        @if (_previewImage != null)
+        {
+            <img src="@_previewImage"
+                 style="max-width:200px; margin-top:12px; border-radius:12px;" />
+        }
+
+        <MudDivider Class="my-4" />
+
+        <!-- ACTIONS -->
         <div class="d-flex justify-end gap-2">
             <MudButton Variant="Variant.Text"
                        Color="Color.Default"
-                       ButtonType="ButtonType.Button"
                        OnClick="Cancel">
                 Abbrechen
             </MudButton>
 
             <MudButton Variant="Variant.Filled"
                        Color="Color.Primary"
-                       ButtonType="ButtonType.Button"
+                       Disabled="@(_file == null)"
                        OnClick="Save">
                 Speichern
             </MudButton>
@@ -90,16 +102,42 @@ else
 }
 
 @code {
+
+    // ===================== STATE =====================
+
     private Item _item = new();
     private List<ItemCategory> _categories = new();
-    private bool _isAdmin;
     private ItemCategory? selectedCategory;
-    IBrowserFile? _file;
-    string? _previewImage;
+
+    private bool _isAdmin;
+
+    private IBrowserFile? _file;
+    private string? _previewImage;
+
+    private bool _imageError;
+
+    // ===================== LIFECYCLE =====================
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        _isAdmin = user.IsInRole("Admin");
+
+        _categories = await _context.Categories
+            .OrderBy(c => c.CategoryId)
+            .ToListAsync();
+
+        _item.DateAdded = DateTime.Now;
+    }
+
+    // ===================== FILE HANDLING =====================
 
     async Task OnFileSelected(InputFileChangeEventArgs e)
     {
         _file = e.File;
+        _imageError = false;
 
         using var stream = _file.OpenReadStream(5_000_000);
         using var ms = new MemoryStream();
@@ -108,7 +146,7 @@ else
         _previewImage = $"data:{_file.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
     }
 
-    public async Task<string> SaveImageAsync(IBrowserFile file)
+    async Task<string> SaveImageAsync(IBrowserFile file)
     {
         var allowed = new[] { "image/jpeg", "image/png", "image/webp" };
         if (!allowed.Contains(file.ContentType))
@@ -117,48 +155,38 @@ else
         var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.Name)}";
         var path = Path.Combine("wwwroot/uploads/items", fileName);
 
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+
         await using var fs = new FileStream(path, FileMode.Create);
         await file.OpenReadStream(5_000_000).CopyToAsync(fs);
 
         return $"/uploads/items/{fileName}";
     }
 
-    
-    protected override async Task OnInitializedAsync()
-    { 
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-        _isAdmin = user.IsInRole("Admin");
-        
-        _categories = await _context.Categories
-            .OrderBy(c => c.CategoryId)
-            .ToListAsync();
-        // default date
-        _item.DateAdded = DateTime.Now;
-    }
+    // ===================== ACTIONS =====================
 
     private async Task Save()
     {
-        if (selectedCategory is null)
+        if (_file == null)
+        {
+            _imageError = true;
+            return;
+        }
+
+        if (selectedCategory == null)
             return;
 
         _item.CategoryId = selectedCategory.CategoryId;
-
-        // 👉 WENN ein Bild ausgewählt wurde → speichern
-        if (_file != null)
-        {
-            _item.ImageUrl = await SaveImageAsync(_file);
-        }
+        _item.ImageUrl = await SaveImageAsync(_file);
 
         await _context.Items.AddAsync(_item);
         await _context.SaveChangesAsync();
 
-        Nav.NavigateTo("/main");
+        Nav.NavigateTo("/");
     }
 
-    
     private void Cancel()
     {
-        Nav.NavigateTo("/main");
+        Nav.NavigateTo("/");
     }
 }

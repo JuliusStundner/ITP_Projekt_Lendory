@@ -1,20 +1,39 @@
 ﻿@page "/items/{ItemId:int}"
 
+@using System.Globalization
 @using Lendory.Data
 @using Lendory.Entities
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
 
-
 @inject ApplicationDbContext _context
 @inject NavigationManager Nav
 @inject IDialogService DialogService
 @inject AuthenticationStateProvider AuthStateProvider
 
-<MudPaper Class="pa-6 mx-auto mt-6"
+<MudPaper Class="@PaperClass"
           Style="max-width: 900px; border-radius: 18px;"
           Elevation="3">
+
+    <!-- BACK BUTTON -->
+    <MudButton Variant="Variant.Text"
+               Color="Color.Info"
+               StartIcon="@Icons.Material.Filled.ArrowBack"
+               Class="mb-2 back-button"
+               @onclick="GoBack">
+        Zurück
+    </MudButton>
+
+    @if (_isEditMode)
+    {
+        <MudChip T="string"Color="Color.Info"
+                 Variant="Variant.Filled"
+                 StartIcon="@Icons.Material.Filled.Edit"
+                 Class="edit-badge">
+            EDIT-MODUS
+        </MudChip>
+    }
 
     @if (_item == null)
     {
@@ -26,9 +45,20 @@
 
             <!-- HEADER -->
             <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudText Typo="Typo.h5" Class="fw-bold">
-                    @_item.Name
-                </MudText>
+                @if (!_isEditMode)
+                {
+                    <MudText Typo="Typo.h5" Class="fw-bold">
+                        @_item.Name
+                    </MudText>
+                }
+                else
+                {
+                    <MudTextField T="string"
+                                  @bind-Value="_editItem.Name"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Style="max-width: 300px;" />
+                }
 
                 <MudSpacer />
 
@@ -39,14 +69,26 @@
             </MudStack>
 
             <!-- DESCRIPTION -->
-            <MudText Typo="Typo.body1">
-                Beschreibung: @_item.Description
-            </MudText>
+            @if (!_isEditMode)
+            {
+                <MudText Typo="Typo.body1">
+                    Beschreibung: @_item.Description
+                </MudText>
+            }
+            else
+            {
+                <MudTextField T="string"
+                              Label="Beschreibung"
+                              @bind-Value="_editItem.Description"
+                              Variant="Variant.Outlined"
+                              Lines="3"
+                              FullWidth />
+            }
 
+            <!-- IMAGE -->
             @if (!string.IsNullOrWhiteSpace(_item.ImageUrl))
             {
-                <img src="@_item.ImageUrl"
-                     class="item-image" />
+                <img src="@_item.ImageUrl" class="item-image" />
             }
             else
             {
@@ -55,91 +97,243 @@
                              Size="Size.Large" />
                 </div>
             }
+
+            <!-- META -->
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.body1">
+                    <b>Kategorie:</b> @_item.Category.Name
+                </MudText>
+
+                <MudText Typo="Typo.body1">
+                    <b>Preis pro Tag:</b>
+                    @_item.Category.HourRate.ToString("C", CultureInfo.GetCultureInfo("de-AT"))
+                </MudText>
+            </MudStack>
+
             <MudDivider />
 
-            <!-- ACTIONS -->
-            <MudStack Row="true" Spacing="2">
+            <!-- ACTION ROW -->
+            <MudGrid Class="action-row" Spacing="2">
 
-                @if (!_isAuthenticated)
+                
+                <MudItem xs="12" md="8">
+                    <MudStack Row="true" Spacing="3" Wrap="Wrap.Wrap">
+
+                        @if (_isAuthenticated)
+                        {
+                            <MudAlert Severity="Severity.Info"
+                                      Dense="true"
+                                      Class="action-alert">
+                                Bitte anmelden, um dieses Item auszuborgen.
+                            </MudAlert>
+                        }
+                        else if (_item.Availability)
+                        {
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Success"
+                                       StartIcon="@Icons.Material.Filled.AssignmentReturn"
+                                       Class="action-btn"
+                                       @onclick="BorrowItem">
+                                Ausborgen
+                            </MudButton>
+                        }
+                        else if (_item.BorrowedByUserId == _currentUserId)
+                        {
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Error"
+                                       StartIcon="@Icons.Material.Filled.Undo"
+                                       Class="action-btn"
+                                       @onclick="ReturnItem">
+                                Zurückgeben
+                            </MudButton>
+                        }
+
+                    </MudStack>
+                </MudItem>
+
+                <!-- ADMIN ACTIONS -->
+                @if (!_isAdmin)
                 {
-                    <MudAlert Severity="Severity.Info">
-                        Bitte  anmelden, um dieses Item auszuborgen.
-                    </MudAlert>
-                }
-                else if (_item.Availability)
-                {
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Success"
-                               StartIcon="@Icons.Material.Filled.AssignmentReturn"
-                               @onclick="BorrowItem">
-                        Ausborgen
-                    </MudButton>
-                }
-                else if (_item.BorrowedByUserId == _currentUserId)
-                {
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Error"
-                               StartIcon="@Icons.Material.Filled.Undo"
-                               @onclick="ReturnItem">
-                        Zurückgeben
-                    </MudButton>
+                    <MudItem xs="12" md="4">
+                        <MudStack Spacing="2">
+
+                            <MudText Typo="Typo.subtitle2"
+                                     Class="fw-bold"
+                                     Style="opacity:0.65;">
+                                Admin-Funktionen
+                            </MudText>
+
+                            
+                            @if (!_item.HasNfc)
+                            {
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Nfc"
+                                           FullWidth
+                                           @onclick="OpenNfcDialog">
+                                    Auf NFC-Tag speichern
+                                </MudButton>
+                            }
+                            else
+                            {
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Nfc"
+                                           FullWidth
+                                           @onclick="OpenNfcDialog">
+                                    Von NFC-Tag lösen
+                                </MudButton>
+                            }
+                            
+
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Error"
+                                       StartIcon="@Icons.Material.Filled.Delete"
+                                       FullWidth
+                                       @onclick="ConfirmDelete">
+                                Item löschen
+                            </MudButton>
+
+                            @if(!_isEditMode){
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Info"
+                                       StartIcon="@Icons.Material.Filled.Edit"
+                                       FullWidth
+                                       @onclick="ToggleEditMode">
+                                Bearbeiten
+                            </MudButton>
+                            }
+                            
+                            @if (_isEditMode)
+                            {
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Success"
+                                           StartIcon="@Icons.Material.Filled.Save"
+                                           FullWidth
+                                           @onclick="SaveEdit">
+                                    Speichern
+                                </MudButton>
+
+                                <MudButton Variant="Variant.Text"
+                                           FullWidth
+                                           @onclick="CancelEdit">
+                                    Abbrechen
+                                </MudButton>
+                            }
+                        </MudStack>
+                    </MudItem>
                 }
 
-            </MudStack>
-            
-            @if(!_isAdmin){
-            <!-- NFC ACTION -->
-            <MudStack Row="true" JustifyContent="JustifyContent.FlexEnd">
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Nfc"
-                           @onclick="OpenNfcDialog">
-                    Auf NFC-Tag speichern
-                </MudButton>
-            </MudStack>
-            
-            <MudStack Row="true" JustifyContent="JustifyContent.FlexEnd" Spacing="2">
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Error"
-                           StartIcon="@Icons.Material.Filled.Delete"
-                           OnClick="ConfirmDelete">
-                    Item löschen
-                </MudButton>
-            </MudStack>
-            }
-            
-            
+            </MudGrid>
+
         </MudStack>
     }
 
 </MudPaper>
 
+<style>
+    .mud-paper {
+        position: relative;
+    }
+
+    .edit-mode {
+        border: 2px solid blue;
+        box-shadow: 0 0 0 3px rgba(33,150,243,0.15);
+    }
+
+    .edit-badge {
+        position: absolute;
+        top: 12px;
+        right: 16px;
+        z-index: 10;
+    }
+
+    .action-row {
+        margin-top: 12px;
+    }
+
+    .action-btn {
+        min-height: 36px;
+    }
+
+    .action-alert {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+</style>
+
 @code {
     [Parameter] public int ItemId { get; set; }
 
     private Item? _item;
+    private Item _editItem = new();
+
     private string? _currentUserId;
     private bool _isAuthenticated;
     private bool _isAdmin;
+    private bool _isEditMode;
+
+    private string PaperClass =>
+        _isEditMode
+            ? "pa-6 mx-auto mt-6 edit-mode"
+            : "pa-6 mx-auto mt-6";
+
+    private void GoBack()
+    {
+        Nav.NavigateTo("/");
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        // 🔐 Auth
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
-        _isAdmin = user.IsInRole("Admin");
 
+        _isAdmin = user.IsInRole("Admin");
         _isAuthenticated = user.Identity?.IsAuthenticated ?? false;
         _currentUserId = user.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        // 📦 Item laden
         _item = await _context.Items
+            .Include(i => i.Category)
             .FirstOrDefaultAsync(i => i.ItemId == ItemId);
+
+        if (_item != null)
+        {
+            _editItem = new Item
+            {
+                ItemId = _item.ItemId,
+                Name = _item.Name,
+                Description = _item.Description
+            };
+        }
     }
 
-    // =========================
-    // BORROW
-    // =========================
+    private void ToggleEditMode()
+    {
+        _isEditMode = !_isEditMode;
+    }
+
+    private async Task SaveEdit()
+    {
+        if (_item == null)
+            return;
+
+        _item.Name = _editItem.Name;
+        _item.Description = _editItem.Description;
+
+        await _context.SaveChangesAsync();
+        _isEditMode = false;
+    }
+
+    private void CancelEdit()
+    {
+        if (_item == null)
+            return;
+
+        _editItem.Name = _item.Name;
+        _editItem.Description = _item.Description;
+        _isEditMode = false;
+    }
+
     private async Task BorrowItem()
     {
         if (!_isAuthenticated || _item == null)
@@ -151,76 +345,91 @@
         _item.Availability = false;
         _item.BorrowedByUserId = _currentUserId;
 
+        var borrow = new Borrow
+        {
+            ItemId = _item.ItemId,
+            UserId = _currentUserId!,
+            StartAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+            TotalCost = 0 // wird beim Zurückgeben berechnet
+        };
+
+        _context.Borrows.Add(borrow);
+
         await _context.SaveChangesAsync();
-        StateHasChanged();
     }
 
-    // =========================
-    // RETURN
-    // =========================
+
     private async Task ReturnItem()
     {
         if (!_isAuthenticated || _item == null)
             return;
 
-        // 🔒 Nur der Ausleiher darf zurückgeben
         if (_item.BorrowedByUserId != _currentUserId)
             return;
 
         _item.Availability = true;
         _item.BorrowedByUserId = null;
 
+        var borrow = await _context.Borrows
+            .Where(b =>
+                b.ItemId == _item.ItemId &&
+                b.UserId == _currentUserId &&
+                b.EndAt == null)
+            .OrderByDescending(b => b.StartAt)
+            .FirstOrDefaultAsync();
+
+        if (borrow != null)
+        {
+            borrow.EndAt = DateTime.UtcNow;
+
+            var days = Math.Max(
+                1,
+                (borrow.EndAt.Value - borrow.StartAt.Date).Days
+            );
+
+            borrow.TotalCost = days * _item.Category.HourRate;
+        }
+
         await _context.SaveChangesAsync();
-        StateHasChanged();
     }
 
-    // =========================
-    // NFC
-    // =========================
+
     private void OpenNfcDialog()
     {
-        var parameters = new DialogParameters
-        {
-            { "ItemUrl", Nav.Uri }
-        };
-
+        if(!_item.HasNfc){
+        _item.HasNfc = true;
         DialogService.Show<NfcWriteDialog>(
             "NFC-Tag beschreiben",
-            parameters);
+            new DialogParameters { { "ItemUrl", Nav.Uri } });
+        }
+        else
+        {
+            _item.HasNfc = false;
+            DialogService.Show<NfcDeleteDialog>(
+                "NFC-Tag lösen",
+                new DialogParameters { { "ItemUrl", Nav.Uri } });
+        }
     }
-    
-    
-    
-    // =========================
-    // DELETE
-    // =========================
+
     private async Task ConfirmDelete()
     {
         if (_item == null)
             return;
 
         bool? confirmed = await DialogService.ShowMessageBox(
-            title: "Item löschen",
-            message: $"Willst du das Item „{_item.Name}“ wirklich löschen?",
+            "Item löschen",
+            $"Willst du das Item „{_item.Name}“ wirklich löschen?",
             yesText: "Löschen",
-            cancelText: "Abbrechen",
-            options: new DialogOptions { CloseOnEscapeKey = true }
-        );
+            cancelText: "Abbrechen");
 
         if (confirmed != true)
             return;
 
-        // 🔥 SQL DELETE – stabil, kein EF-Tracking
         await _context.Database.ExecuteSqlRawAsync(
             "DELETE FROM ITEM WHERE ITEM_ID = {0}",
-            _item.ItemId
-        );
+            _item.ItemId);
 
-        Nav.NavigateTo("/main", forceLoad: true);
+        Nav.NavigateTo("/", true);
     }
-
-
-
-
-
 }

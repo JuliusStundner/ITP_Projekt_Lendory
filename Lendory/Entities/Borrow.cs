@@ -17,9 +17,8 @@ public class Borrow
     [Column("START_AT")]
     public DateTime StartAt { get; set; }
     
-    [Required]
     [Column("END_AT")]
-    public DateTime EndAt { get; set; }
+    public DateTime? EndAt { get; set; }
     
     [Required]
     [Column("TOTAL_COST")]

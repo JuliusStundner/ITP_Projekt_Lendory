@@ -1,0 +1,274 @@
+﻿@page "/statistik"
+
+@using Lendory.Data
+@using Lendory.Entities
+@using Microsoft.EntityFrameworkCore
+
+@inject ApplicationDbContext _context
+
+<PageTitle>Statistik</PageTitle>
+
+<MudPaper Class="pa-6 mx-auto mt-6"
+          Style="max-width: 1200px; border-radius: 18px;"
+          Elevation="3">
+
+    <MudText Typo="Typo.h4" Class="fw-bold mb-4">
+        📊 Statistik
+    </MudText>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate Color="Color.Primary" />
+    }
+    else
+    {
+        <!-- KPI CARDS -->
+        <MudGrid Spacing="3">
+
+            <MudItem xs="12" sm="4">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.subtitle2">Gesamte Ausleihen</MudText>
+                    <MudText Typo="Typo.h5" Class="fw-bold">@_totalBorrows</MudText>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="4">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.subtitle2">Gesamtumsatz</MudText>
+                    <MudText Typo="Typo.h5" Class="fw-bold">
+                        @_totalRevenue.ToString("C")
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="4">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.subtitle2">Ø Ausleihdauer (Tage)</MudText>
+                    <MudText Typo="Typo.h5" Class="fw-bold">
+                        @_avgDuration.ToString("0.0")
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+
+        </MudGrid>
+
+        <MudDivider Class="my-6" />
+
+        <!-- ITEMS -->
+        <MudText Typo="Typo.h6" Class="mb-2">
+            📦 Ausleihen pro Item
+        </MudText>
+
+        <MudChart ChartType="ChartType.Bar"
+                  Labels="@_itemLabels"
+                  Data="@_itemData"
+                  Height="300px" />
+
+        <MudTable Items="_itemStats" Dense Hover Class="mt-4">
+            <HeaderContent>
+                <MudTh>Item</MudTh>
+                <MudTh>Anzahl</MudTh>
+                <MudTh>Umsatz</MudTh>
+                <MudTh>Ø Dauer (Tage)</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.ItemName</MudTd>
+                <MudTd>@context.Count</MudTd>
+                <MudTd>@context.Revenue.ToString("C")</MudTd>
+                <MudTd>@context.AvgDuration.ToString("0.0")</MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        <MudDivider Class="my-6" />
+
+        <!-- USERS -->
+        <MudText Typo="Typo.h6" Class="mb-2">
+            👤 User-Statistik
+        </MudText>
+
+        <MudChart ChartType="ChartType.Bar"
+                  Labels="@_userLabels"
+                  Data="@_userData"
+                  Height="300px" />
+
+        <MudTable Items="_userStats" Dense Hover Class="mt-4">
+            <HeaderContent>
+                <MudTh>User</MudTh>
+                <MudTh>Ausleihen</MudTh>
+                <MudTh>Gesamtbetrag</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.UserName</MudTd>
+                <MudTd>@context.Count</MudTd>
+                <MudTd>@context.TotalSpent.ToString("C")</MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        <MudDivider Class="my-6" />
+
+        <!-- MONTHS -->
+        <MudText Typo="Typo.h6" Class="mb-2">
+            📅 Ausleihen & Umsatz pro Monat
+        </MudText>
+
+        <MudChart ChartType="ChartType.Bar"
+                  Labels="@_monthLabels"
+                  Data="@_monthData"
+                  Height="350px"
+                  DatasetLabels="@(new[] { "Ausleihen", "Umsatz (€)" })" />
+    }
+
+</MudPaper>
+
+@code {
+
+    private bool _loading = true;
+
+    // ===== KPIs =====
+    private int _totalBorrows;
+    private decimal _totalRevenue;
+    private double _avgDuration;
+
+    // ===== ITEM STATS =====
+    private List<ItemStat> _itemStats = new();
+    private string[] _itemLabels = Array.Empty<string>();
+    private double[][] _itemData = Array.Empty<double[]>();
+
+    // ===== USER STATS =====
+    private List<UserStat> _userStats = new();
+    private string[] _userLabels = Array.Empty<string>();
+    private double[][] _userData = Array.Empty<double[]>();
+
+    // ===== MONTH STATS =====
+    private string[] _monthLabels = Array.Empty<string>();
+    private double[][] _monthData = Array.Empty<double[]>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadKpis();
+        await LoadItemStats();
+        await LoadUserStats();
+        await LoadMonthlyStats();
+
+        _loading = false;
+    }
+
+    // ================= KPIs =================
+
+    private async Task LoadKpis()
+    {
+        _totalBorrows = await _context.Borrows.CountAsync();
+
+        _totalRevenue = await _context.Borrows
+            .Where(b => b.EndAt.HasValue)
+            .SumAsync(b => b.TotalCost);
+
+        var rawDurations = await _context.Borrows
+            .Where(b => b.EndAt.HasValue)
+            .Select(b => EF.Functions.DateDiffDay(b.StartAt, b.EndAt.Value))
+            .ToListAsync();
+
+        _avgDuration = rawDurations.Count == 0
+            ? 0
+            : rawDurations
+                .Select(d => d < 1 ? 1 : d)
+                .Average();
+    }
+
+    // ================= ITEMS =================
+
+    private async Task LoadItemStats()
+    {
+        _itemStats = await _context.Borrows
+            .Where(b => b.EndAt.HasValue)
+            .Include(b => b.Item)
+            .GroupBy(b => b.Item.Name)
+            .Select(g => new ItemStat
+            {
+                ItemName = g.Key,
+                Count = g.Count(),
+                Revenue = g.Sum(x => x.TotalCost),
+                AvgDuration = g
+                    .Select(x => EF.Functions.DateDiffDay(x.StartAt, x.EndAt.Value))
+                    .Average()
+            })
+            .OrderByDescending(x => x.Count)
+            .ToListAsync();
+
+        _itemLabels = _itemStats.Select(x => x.ItemName).ToArray();
+        _itemData = new[]
+        {
+            _itemStats.Select(x => (double)x.Count).ToArray()
+        };
+    }
+
+    // ================= USERS =================
+
+    private async Task LoadUserStats()
+    {
+        _userStats = await _context.Borrows
+            .Where(b => b.EndAt.HasValue)
+            .Include(b => b.User)
+            .GroupBy(b => b.User.UserName)
+            .Select(g => new UserStat
+            {
+                UserName = g.Key!,
+                Count = g.Count(),
+                TotalSpent = g.Sum(x => x.TotalCost)
+            })
+            .OrderByDescending(x => x.Count)
+            .ToListAsync();
+
+        _userLabels = _userStats.Select(x => x.UserName).ToArray();
+        _userData = new[]
+        {
+            _userStats.Select(x => (double)x.Count).ToArray()
+        };
+    }
+
+    // ================= MONTHS =================
+
+    private async Task LoadMonthlyStats()
+    {
+        var rawData = await _context.Borrows
+            .Where(b => b.EndAt.HasValue)
+            .GroupBy(b => new { b.StartAt.Year, b.StartAt.Month })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                Count = g.Count(),
+                Revenue = g.Sum(x => x.TotalCost)
+            })
+            .OrderBy(x => x.Year)
+            .ThenBy(x => x.Month)
+            .ToListAsync();
+
+        _monthLabels = rawData
+            .Select(x => $"{x.Month:D2}/{x.Year}")
+            .ToArray();
+
+        _monthData = new[]
+        {
+            rawData.Select(x => (double)x.Count).ToArray(),
+            rawData.Select(x => (double)x.Revenue).ToArray()
+        };
+    }
+
+    // ================= DTOs =================
+
+    private class ItemStat
+    {
+        public string ItemName { get; set; } = "";
+        public int Count { get; set; }
+        public decimal Revenue { get; set; }
+        public double AvgDuration { get; set; }
+    }
+
+    private class UserStat
+    {
+        public string UserName { get; set; } = "";
+        public int Count { get; set; }
+        public decimal TotalSpent { get; set; }
+    }
+}

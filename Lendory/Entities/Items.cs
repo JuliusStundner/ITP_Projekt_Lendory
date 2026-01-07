@@ -35,6 +35,8 @@ public class Item
     [Column("DATE_ADDED")]
     public DateTime DateAdded { get; set; } = DateTime.UtcNow;
     
+    [Column("HasNfc")]
+    public bool HasNfc { get; set; } = false;
     public string? BorrowedByUserId { get; set; }
 
     public string? ImageUrl { get; set; }
